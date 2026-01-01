@@ -20,7 +20,7 @@
             border-radius: 5px; font-size: 16px; width: 100%; font-weight: bold;
         }
 
-        /* --- RECENT CHANGE: CUSTOM MODAL STYLES --- */
+        /* CUSTOM MODAL STYLES */
         #treeModal {
             display: none;
             position: fixed;
@@ -32,33 +32,39 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            width: 80%;
-            max-width: 300px;
+            width: 85%;
+            max-width: 320px;
         }
         #treeModal input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
             box-sizing: border-box;
             font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
+        
+        /* RECENT CHANGE: Slightly larger font for coordinates */
         .coord-text {
-            font-size: 0.5em; /* Half size */
-            color: #666;
-            margin-top: 5px;
+            font-size: 0.8em; 
+            color: #555;
+            margin-top: 8px;
             display: block;
+            font-family: monospace; /* Monospace makes numbers easier to read */
         }
+
         .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
-        .modal-btns button { flex: 1; padding: 10px; border-radius: 5px; border: none; font-weight: bold; }
+        .modal-btns button { flex: 1; padding: 12px; border-radius: 5px; border: none; font-weight: bold; font-size: 14px; }
         .save-btn { background: #28a745; color: white; }
-        .cancel-btn { background: #ccc; }
+        .cancel-btn { background: #eee; color: #333; }
     </style>
 </head>
 <body>
 
     <div id="controls">
         <button class="btn-locate" onclick="findMe()">📍 Find My Location</button>
-        <h2>🌳 Tree Mapping Tool</h2>
+        <h2 style="margin: 10px 0 5px 0; font-size: 1.2em;">🌳 Tree Mapping Tool</h2>
         <p><strong>Status:</strong> <span id="status">Locating...</span></p>
     </div>
 
@@ -66,8 +72,10 @@
 
     <div id="treeModal">
         <label style="font-weight: bold;">What kind of tree is this?</label>
-        <input type="text" id="treeInput" placeholder="e.g. Oak">
+        <input type="text" id="treeInput" placeholder="Enter species...">
+        
         <span id="coordDisplay" class="coord-text"></span>
+        
         <div class="modal-btns">
             <button class="cancel-btn" onclick="closeModal()">Cancel</button>
             <button class="save-btn" onclick="saveTree()">Save Tree</button>
@@ -85,7 +93,7 @@
         const map = L.map('map');
         const statusEl = document.getElementById('status');
         let userLocationLayer = null;
-        let currentClickCoords = null; // Store coords while modal is open
+        let currentClickCoords = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -100,13 +108,20 @@
             userLocationLayer = L.circle(e.latlng, { radius: 10, color: 'blue', fillOpacity: 0.4 }).addTo(map);
         });
 
-        // --- RECENT CHANGE: CLICK OPENS CUSTOM MODAL ---
+        map.on('locationerror', function() {
+            statusEl.innerText = "❌ GPS Error/Denied";
+            if (!map.getCenter()) map.setView([40.7128, -74.0060], 13);
+        });
+
+        // RECENT CHANGE: Modal opening with Degree symbols
         map.on('click', function(e) {
             currentClickCoords = e.latlng;
-            const lat = e.latlng.lat.toFixed(3); // Round to 3 decimals
-            const lng = e.latlng.lng.toFixed(3); // Round to 3 decimals
+            const lat = e.latlng.lat.toFixed(3); 
+            const lng = e.latlng.lng.toFixed(3); 
             
-            document.getElementById('coordDisplay').innerText = `Coordinates: ${lat}, ${lng}`;
+            // Format: Coordinates: 40.123°, -74.456°
+            document.getElementById('coordDisplay').innerText = `Coordinates: ${lat}°, ${lng}°`;
+            
             document.getElementById('treeModal').style.display = 'block';
             document.getElementById('treeInput').value = '';
             document.getElementById('treeInput').focus();
@@ -138,7 +153,7 @@
                 alert("Database Error: " + error.message);
                 map.removeLayer(tempMarker);
             } else {
-                tempMarker.setPopupContent(`<b>Tree:</b> ${userInput}`);
+                tempMarker.setPopupContent(`<b>Tree:</b> ${userInput}<br><small>Coordinates: ${lat.toFixed(3)}°, ${lng.toFixed(3)}°</small>`);
             }
         }
 
@@ -148,7 +163,7 @@
                 trees.forEach(tree => {
                     L.marker([tree.latitude, tree.longitude])
                         .addTo(map)
-                        .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unknown'}`);
+                        .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unknown'}<br><small>Coordinates: ${tree.latitude.toFixed(3)}°, ${tree.longitude.toFixed(3)}°</small>`);
                 });
             }
         }
