@@ -6,29 +6,51 @@
     <title>Tree Inventory Map</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />    
+
     <style>
-        body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
-        #controls { 
-            padding: 15px; 
-            background: white; 
-            margin-bottom: 10px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        #map { 
-            height: 600px; 
-            width: 100%; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status-ok { color: green; font-weight: bold; }
-        .status-error { color: red; font-weight: bold; }
-    </style>
+    /* Reset margins so the map touches the edges of the phone */
+    body, html { 
+        margin: 0; 
+        padding: 0; 
+        height: 100%; 
+        width: 100%; 
+        overflow: hidden; /* Prevents weird scrolling */
+        display: flex;
+        flex-direction: column;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
+    }
+
+    #controls { 
+        padding: 15px; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000; /* Keeps controls on top of the map */
+    }
+
+    /* This makes the map fill the rest of the screen */
+    #map { 
+        flex-grow: 1; 
+        width: 100%; 
+    }
+
+    /* Make the popup buttons bigger for "fat fingers" on mobile */
+    .leaflet-popup-content {
+        font-size: 16px;
+        padding: 5px;
+    }
+</style>
 </head>
 <body>
 
     <div id="controls">
+
+	<button onclick="findMe()" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; width: 100%;">
+    📍 Find My Location
+	</button>
+
         <h2>🌳 Tree Mapping Tool</h2>
         <p><strong>Status:</strong> <span id="status">Connecting...</span></p>
         <p style="font-size: 0.9em; color: #666;">Click anywhere on the map to add a new tree.</p>
@@ -78,6 +100,20 @@
                 statusEl.className = "status-error";
             }
         }
+
+function findMe() {
+    map.locate({setView: true, maxZoom: 16});
+}
+
+// When the phone finds you, drop a blue circle
+map.on('locationfound', function(e) {
+    L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
+    alert("Location found! Tap the map to add a tree here.");
+});
+
+map.on('locationerror', function(e) {
+    alert("Could not find your location. Please check your GPS settings.");
+});
 
         // --- ADD DATA ON CLICK ---
 
