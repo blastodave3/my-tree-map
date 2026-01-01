@@ -1,4 +1,67 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Inventory Map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />    
+
+    <style>
+    /* Reset margins so the map touches the edges of the phone */
+    body, html { 
+        margin: 0; 
+        padding: 0; 
+        height: 100%; 
+        width: 100%; 
+        overflow: hidden; /* Prevents weird scrolling */
+        display: flex;
+        flex-direction: column;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica;
+    }
+
+    #controls { 
+        padding: 15px; 
+        background: white; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        z-index: 1000; /* Keeps controls on top of the map */
+    }
+
+    /* This makes the map fill the rest of the screen */
+    #map { 
+        flex-grow: 1; 
+        width: 100%; 
+    }
+
+    /* Make the popup buttons bigger for "fat fingers" on mobile */
+    .leaflet-popup-content {
+        font-size: 16px;
+        padding: 5px;
+    }
+</style>
+</head>
+<body>
+
+    <div id="controls">
+
+	<button onclick="findMe()" style="padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; width: 100%;">
+    📍 Find My Location
+	</button>
+
+        <h2>🌳 Tree Mapping Tool</h2>
+        <p><strong>Status:</strong> <span id="status">Connecting...</span></p>
+        <p style="font-size: 0.9em; color: #666;">Click anywhere on the map to add a new tree.</p>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
     // --- CONFIGURATION ---
     const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
@@ -83,3 +146,6 @@
 
     loadTrees();
 </script>
+
+</body>
+</html>
