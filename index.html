@@ -43,7 +43,7 @@
             // Get data from your table
             const { data: trees, error } = await supabaseClient
                 .from('tree_points')
-                .select('latitude, longitude, name');
+                .select('latitude, longitude, tree_type');
 
             if (error) {
                 console.error("Database error:", error.message);
@@ -57,7 +57,7 @@
                     if (tree.latitude && tree.longitude) {
                         const marker = L.marker([tree.latitude, tree.longitude])
                             .addTo(map)
-                            .bindPopup(`<b>Tree:</b> ${tree.name || 'Unnamed Tree'}`);
+                            .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unnamed Tree'}`);
                         
                         markerList.push(marker);
                     }
