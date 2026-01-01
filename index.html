@@ -80,27 +80,38 @@
         }
 
         // --- ADD DATA ON CLICK ---
-        map.on('click', async function(e) {
-            const treeName = prompt("What kind of tree is this?");
-            if (!treeName) return;
 
-            const { data, error } = await supabaseClient
-                .from('tree_points')
-                .insert([{ 
-                    tree_type: userInput, 
-                    latitude: e.latlng.lat, 
-                    longitude: e.latlng.lng 
-                }]);
+       
+	 map.on('click', async function(e) {
+    // 1. Get the coordinates from the click event
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
 
-            if (error) {
-                alert("Could not save: " + error.message);
-            } else {
-                L.marker([e.latlng.lat, e.latlng.lng])
-                    .addTo(map)
-                    .bindPopup(`<b>Tree:</b> ${treeName}`)
-                    .openPopup();
-            }
-        });
+    // 2. CREATE the variable by asking the user for input
+    const userInput = prompt("What kind of tree is this?");
+
+    // 3. Stop if they hit "Cancel" or leave it blank
+    if (!userInput) return;
+
+    // 4. Send to Supabase
+    const { data, error } = await supabaseClient
+        .from('tree_points')
+        .insert([{ 
+            tree_type: userInput, // 'userInput' must be defined above!
+            latitude: lat, 
+            longitude: lng 
+        }]);
+
+    if (error) {
+        alert("Could not save: " + error.message);
+    } else {
+        // 5. Use 'userInput' again for the map popup
+        L.marker([lat, lng])
+            .addTo(map)
+            .bindPopup(`<b>Tree:</b> ${userInput}`)
+            .openPopup();
+    }
+});
 
         loadTrees();
     </script>
