@@ -27,12 +27,14 @@
   const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
  
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // We change the name to 'supabaseClient' so it doesn't clash
+	const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
         // Simple check to see if it works
-        async function checkConnection() {
-            const { data, error } = await supabase.from('tree_points').select('count');
-            const statusEl = document.getElementById('status');
+       async function checkConnection() {
+    // Change 'supabase' to 'supabaseClient' here too
+    const { data, error } = await supabaseClient.from('tree_points').select('count');
+    
             
             if (error) {
                 statusEl.innerText = "❌ Error: " + error.message;
