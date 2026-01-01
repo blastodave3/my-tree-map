@@ -29,24 +29,50 @@
   const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
 
-    // Library creates 'supabase', we name our instance 'supabaseClient'
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function checkConnection() {
-        const statusEl = document.getElementById('status'); // Define it first!
-        
-        try {
-            const { data, error } = await supabaseClient.from('tree_points').select('*').limit(1);
-            
-            if (error) throw error;
-            statusEl.innerText = "✅ Connected Successfully!";
-        } catch (err) {
-            statusEl.innerText = "❌ Error: " + err.message;
-        }
-    }
+        // Initialize the map centered on a general area
+        const map = L.map('map').setView([0, 0], 2);
 
-    checkConnection();
-</script>
+        // Add the map background (tiles)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        async function loadTrees() {
+            // Get data from your table
+            const { data: trees, error } = await supabaseClient
+                .from('tree_points')
+                .select('latitude, longitude, name');
+
+            if (error) {
+                console.error("Database error:", error.message);
+                return;
+            }
+
+            if (trees && trees.length > 0) {
+                const markerList = [];
+
+                trees.forEach(tree => {
+                    if (tree.latitude && tree.longitude) {
+                        const marker = L.marker([tree.latitude, tree.longitude])
+                            .addTo(map)
+                            .bindPopup(`<b>Tree:</b> ${tree.name || 'Unnamed Tree'}`);
+                        
+                        markerList.push(marker);
+                    }
+                });
+
+                // Zoom the map to fit the trees you found
+                const group = new L.featureGroup(markerList);
+                map.fitBounds(group.getBounds());
+            } else {
+                console.log("No trees found in your database table.");
+            }
+        }
+
+        loadTrees();
+    </script>
 </body>
 </html>
 
