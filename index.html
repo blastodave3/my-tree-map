@@ -70,11 +70,25 @@
         const statusEl = document.getElementById('status');
 
         // --- INITIALIZE MAP ---
-        const map = L.map('map').setView([40.7812, -73.9665], 13); // Centered on NY for now
+		const map = L.map('map');
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map)
+
+	// --- RECENT CHANGE: AUTO-LOCATION LOGIC ---
+        map.locate({setView: true, maxZoom: 18});
+
+	map.on('locationfound', function(e) {
+            statusEl.innerText = "📍 Location Found. Tap map to add a tree.";
+            // Add blue circle for current position
+            L.circle(e.latlng, { radius: 10, color: 'blue' }).addTo(map);
+        });
+
+        map.on('locationerror', function(e) {
+            statusEl.innerText = "❌ GPS Denied. Please enable location.";
+            map.setView([40.7128, -74.0060], 13); 
+        });
 
         // --- LOAD DATA FROM DATABASE ---
         async function loadTrees() {
@@ -83,71 +97,58 @@
                     .from('tree_points')
                     .select('*');
 
-                if (error) throw error;
-
-                statusEl.innerText = "✅ Connected & Loaded";
-                statusEl.className = "status-ok";
-
-                if (trees) {
-                    trees.forEach(tree => {
-                        L.marker([tree.latitude, tree.longitude])
-                            .addTo(map)
-                            .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unnamed Tree'}`);
-                    });
-                }
-            } catch (err) {
-                statusEl.innerText = "❌ Error: " + err.message;
-                statusEl.className = "status-error";
+               if (trees) {
+                trees.forEach(tree => {
+                    L.marker([tree.latitude, tree.longitude])
+                        .addTo(map)
+                        // RECENT CHANGE: Correct column 'tree_type' used here
+                        .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unknown'}`);
+                });
             }
         }
 
-function findMe() {
-    map.locate({setView: true, maxZoom: 16});
-}
+	function findMe() {
+  	  map.locate({setView: true, maxZoom: 16});
+	}
 
-// When the phone finds you, drop a blue circle
-map.on('locationfound', function(e) {
-    L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
-    alert("Location found! Tap the map to add a tree here.");
-});
+	// When the phone finds you, drop a blue circle
+	map.on('locationfound', function(e) {
+ 	   L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
+  	  alert("Location found! Tap the map to add a tree here.");
+	});
 
-map.on('locationerror', function(e) {
-    alert("Could not find your location. Please check your GPS settings.");
-});
+	map.on('locationerror', function(e) {
+ 	   alert("Could not find your location. Please check your GPS settings.");
+	});
 
         // --- ADD DATA ON CLICK ---
 
        
-	 map.on('click', async function(e) {
-    // 1. Get the coordinates from the click event
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
+	// --- RECENT CHANGE: CLICK LOGIC (Fixed userInput error) ---
+        map.on('click', async function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
 
-    // 2. CREATE the variable by asking the user for input
-    const userInput = prompt("What kind of tree is this?");
+            const userInput = prompt("What kind of tree is this?");
+            if (!userInput) return;
 
-    // 3. Stop if they hit "Cancel" or leave it blank
-    if (!userInput) return;
+            const tempMarker = L.marker([lat, lng]).addTo(map).bindPopup("Saving...").openPopup();
 
-    // 4. Send to Supabase
-    const { data, error } = await supabaseClient
-        .from('tree_points')
-        .insert([{ 
-            tree_type: userInput, // 'userInput' must be defined above!
-            latitude: lat, 
-            longitude: lng 
-        }]);
+            const { error } = await supabaseClient
+                .from('tree_points')
+                .insert([{ 
+                    tree_type: userInput, // RECENT CHANGE: Correct column name
+                    latitude: lat, 
+                    longitude: lng 
+                }]);
 
-    if (error) {
-        alert("Could not save: " + error.message);
-    } else {
-        // 5. Use 'userInput' again for the map popup
-        L.marker([lat, lng])
-            .addTo(map)
-            .bindPopup(`<b>Tree:</b> ${userInput}`)
-            .openPopup();
-    }
-});
+            if (error) {
+                alert("Database Error: " + error.message);
+                map.removeLayer(tempMarker);
+            } else {
+                tempMarker.setPopupContent(`<b>Tree:</b> ${userInput}`);
+            }
+        });
 
         loadTrees();
     </script>
