@@ -1,81 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tree Inventory Project</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { font-family: sans-serif; margin: 40px; line-height: 1.6; color: #333; }
-        .container { max-width: 800px; margin: auto; }
-        .config-status { padding: 10px; background: #f4f4f4; border-radius: 5px; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Inventory Map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f0f2f5; }
+        #controls { 
+            padding: 15px; 
+            background: white; 
+            margin-bottom: 10px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #map { 
+            height: 600px; 
+            width: 100%; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-ok { color: green; font-weight: bold; }
+        .status-error { color: red; font-weight: bold; }
+    </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🌳 My Tree Mapping Project</h1>
-        <p>This site connects to my Supabase database to display tree points and GIS data.</p>
-        
-        <div class="config-status">
-            <strong>Database Connection:</strong> 
-            <span id="status">Connecting...</span>
-        </div>
+    <div id="controls">
+        <h2>🌳 Tree Mapping Tool</h2>
+        <p><strong>Status:</strong> <span id="status">Connecting...</span></p>
+        <p style="font-size: 0.9em; color: #666;">Click anywhere on the map to add a new tree.</p>
+    </div>
 
+    <div id="map"></div>
 
-<div id="map" style="height: 500px; width: 100%; margin-top: 20px;"></div>
-    </div>
- 
-   <script>
-  const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // --- CONFIGURATION ---
+          const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
       const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const statusEl = document.getElementById('status');
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // --- INITIALIZE MAP ---
+        const map = L.map('map').setView([40.7812, -73.9665], 13); // Centered on NY for now
 
-        // Initialize the map centered on a general area
-        const map = L.map('map').setView([0, 0], 2);
-
-        // Add the map background (tiles)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
+        // --- LOAD DATA FROM DATABASE ---
         async function loadTrees() {
-            // Get data from your table
-            const { data: trees, error } = await supabaseClient
-                .from('tree_points')
-                .select('latitude, longitude, tree_type');
+            try {
+                const { data: trees, error } = await supabaseClient
+                    .from('tree_points')
+                    .select('*');
 
-            if (error) {
-                console.error("Database error:", error.message);
-                return;
-            }
+                if (error) throw error;
 
-            if (trees && trees.length > 0) {
-                const markerList = [];
+                statusEl.innerText = "✅ Connected & Loaded";
+                statusEl.className = "status-ok";
 
-                trees.forEach(tree => {
-                    if (tree.latitude && tree.longitude) {
-                        const marker = L.marker([tree.latitude, tree.longitude])
+                if (trees) {
+                    trees.forEach(tree => {
+                        L.marker([tree.latitude, tree.longitude])
                             .addTo(map)
                             .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unnamed Tree'}`);
-                        
-                        markerList.push(marker);
-                    }
-                });
-
-                // Zoom the map to fit the trees you found
-                const group = new L.featureGroup(markerList);
-                map.fitBounds(group.getBounds());
-            } else {
-                console.log("No trees found in your database table.");
+                    });
+                }
+            } catch (err) {
+                statusEl.innerText = "❌ Error: " + err.message;
+                statusEl.className = "status-error";
             }
         }
+
+        // --- ADD DATA ON CLICK ---
+        map.on('click', async function(e) {
+            const treeName = prompt("What kind of tree is this?");
+            if (!treeName) return;
+
+            const { data, error } = await supabaseClient
+                .from('tree_points')
+                .insert([{ 
+                    name: treeName, 
+                    latitude: e.latlng.lat, 
+                    longitude: e.latlng.lng 
+                }]);
+
+            if (error) {
+                alert("Could not save: " + error.message);
+            } else {
+                L.marker([e.latlng.lat, e.latlng.lng])
+                    .addTo(map)
+                    .bindPopup(`<b>Tree:</b> ${treeName}`)
+                    .openPopup();
+            }
+        });
 
         loadTrees();
     </script>
 </body>
 </html>
-
