@@ -15,11 +15,43 @@
         }
         #controls { padding: 15px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; }
         #map { flex-grow: 1; width: 100%; }
-        h2 { margin: 10px 0 5px 0; font-size: 1.2em; }
         .btn-locate {
             padding: 12px; background: #28a745; color: white; border: none;
             border-radius: 5px; font-size: 16px; width: 100%; font-weight: bold;
         }
+
+        /* --- RECENT CHANGE: CUSTOM MODAL STYLES --- */
+        #treeModal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            width: 80%;
+            max-width: 300px;
+        }
+        #treeModal input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .coord-text {
+            font-size: 0.5em; /* Half size */
+            color: #666;
+            margin-top: 5px;
+            display: block;
+        }
+        .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-btns button { flex: 1; padding: 10px; border-radius: 5px; border: none; font-weight: bold; }
+        .save-btn { background: #28a745; color: white; }
+        .cancel-btn { background: #ccc; }
     </style>
 </head>
 <body>
@@ -32,22 +64,30 @@
 
     <div id="map"></div>
 
+    <div id="treeModal">
+        <label style="font-weight: bold;">What kind of tree is this?</label>
+        <input type="text" id="treeInput" placeholder="e.g. Oak">
+        <span id="coordDisplay" class="coord-text"></span>
+        <div class="modal-btns">
+            <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+            <button class="save-btn" onclick="saveTree()">Save Tree</button>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
         const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
-        
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const statusEl = document.getElementById('status');
-
+        
         const map = L.map('map');
+        const statusEl = document.getElementById('status');
         let userLocationLayer = null;
+        let currentClickCoords = null; // Store coords while modal is open
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         function findMe() {
             statusEl.innerText = "Searching for GPS...";
@@ -60,40 +100,30 @@
             userLocationLayer = L.circle(e.latlng, { radius: 10, color: 'blue', fillOpacity: 0.4 }).addTo(map);
         });
 
-        map.on('locationerror', function() {
-            statusEl.innerText = "❌ GPS Error/Denied";
-            if (!map.getCenter()) map.setView([40.7128, -74.0060], 13);
+        // --- RECENT CHANGE: CLICK OPENS CUSTOM MODAL ---
+        map.on('click', function(e) {
+            currentClickCoords = e.latlng;
+            const lat = e.latlng.lat.toFixed(3); // Round to 3 decimals
+            const lng = e.latlng.lng.toFixed(3); // Round to 3 decimals
+            
+            document.getElementById('coordDisplay').innerText = `Coordinates: ${lat}, ${lng}`;
+            document.getElementById('treeModal').style.display = 'block';
+            document.getElementById('treeInput').value = '';
+            document.getElementById('treeInput').focus();
         });
 
-        setTimeout(findMe, 500);
-
-        async function loadTrees() {
-            try {
-                const { data: trees, error } = await supabaseClient.from('tree_points').select('*');
-                if (error) throw error;
-                if (trees) {
-                    trees.forEach(tree => {
-                        L.marker([tree.latitude, tree.longitude])
-                            .addTo(map)
-                            .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unknown'}`);
-                    });
-                }
-            } catch (err) {
-                statusEl.innerText = "❌ Error loading trees";
-            }
+        function closeModal() {
+            document.getElementById('treeModal').style.display = 'none';
         }
 
-        // --- UPDATED ADD TREE LOGIC ---
-        map.on('click', async function(e) {
-            const lat = e.latlng.lat;
-            const lng = e.latlng.lng;
-
-            // RECENT CHANGE: Formatting coordinates for the prompt
-            const coordString = `Coords: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-            const userInput = prompt(`What kind of tree is this?\n\n${coordString}`);
-            
+        async function saveTree() {
+            const userInput = document.getElementById('treeInput').value;
             if (!userInput) return;
 
+            const lat = currentClickCoords.lat;
+            const lng = currentClickCoords.lng;
+
+            closeModal();
             const tempMarker = L.marker([lat, lng]).addTo(map).bindPopup("Saving...").openPopup();
 
             const { error } = await supabaseClient
@@ -108,10 +138,22 @@
                 alert("Database Error: " + error.message);
                 map.removeLayer(tempMarker);
             } else {
-                tempMarker.setPopupContent(`<b>Tree:</b> ${userInput}<br><small>${coordString}</small>`);
+                tempMarker.setPopupContent(`<b>Tree:</b> ${userInput}`);
             }
-        });
+        }
 
+        async function loadTrees() {
+            const { data: trees } = await supabaseClient.from('tree_points').select('*');
+            if (trees) {
+                trees.forEach(tree => {
+                    L.marker([tree.latitude, tree.longitude])
+                        .addTo(map)
+                        .bindPopup(`<b>Tree:</b> ${tree.tree_type || 'Unknown'}`);
+                });
+            }
+        }
+
+        setTimeout(findMe, 500);
         loadTrees();
     </script>
 </body>
