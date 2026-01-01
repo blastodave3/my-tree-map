@@ -87,7 +87,7 @@
             const { data, error } = await supabaseClient
                 .from('tree_points')
                 .insert([{ 
-                    name: treeName, 
+                    name: tree_type, 
                     latitude: e.latlng.lat, 
                     longitude: e.latlng.lng 
                 }]);
