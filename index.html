@@ -23,29 +23,26 @@
     </div>
  
     <script>
-        // REPLACE THESE with your actual keys from the Supabase Settings > API page
-  const SUPABASE_URL = "https://wintsbrxqxezfpxwvtxx.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_3nxL_MQpLTbhBFN64YA8vA_tawKXsKM";
- 
-        // We change the name to 'supabaseClient' so it doesn't clash
-	const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
- 
-        // Simple check to see if it works
-       async function checkConnection() {
-    // Change 'supabase' to 'supabaseClient' here too
-    const { data, error } = await supabaseClient.from('tree_points').select('count');
-    
-            
-            if (error) {
-                statusEl.innerText = "❌ Error: " + error.message;
-                statusEl.style.color = "red";
-            } else {
-                statusEl.innerText = "✅ Connected Successfully!";
-                statusEl.style.color = "green";
-            }
-        }
- 
-        checkConnection();
-    </script>
+    const SUPABASE_URL = "https://your-url.supabase.co";
+    const SUPABASE_ANON_KEY = "your-key";
+
+    // Library creates 'supabase', we name our instance 'supabaseClient'
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function checkConnection() {
+        const statusEl = document.getElementById('status'); // Define it first!
+        
+        try {
+            const { data, error } = await supabaseClient.from('tree_points').select('*').limit(1);
+            
+            if (error) throw error;
+            statusEl.innerText = "✅ Connected Successfully!";
+        } catch (err) {
+            statusEl.innerText = "❌ Error: " + err.message;
+        }
+    }
+
+    checkConnection();
+</script>
 </body>
 </html>
